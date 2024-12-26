@@ -80,12 +80,14 @@ public class PlaybackInfoFilter implements WebFilter {
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         URI uri = exchange.getRequest().getURI();
         Boolean isInner = exchange.getAttribute(Constants.IS_INNER);
+        String ip = (String) exchange.getAttributes().get(Constants.IP);
+
         if (!pathMatcher.match(Constants.PLAY_BACK_INFO_PATH_PATTERN, uri.getPath())) {
             return chain.filter(exchange);
         }
 
         if (isInner != null && isInner) {
-            // 如果是内网，不走直连
+            log.info("ip: {}, 内网地址不做重定向", ip);
             return chain.filter(exchange);
         }
 

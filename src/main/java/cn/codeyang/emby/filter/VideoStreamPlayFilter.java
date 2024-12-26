@@ -50,6 +50,7 @@ public class VideoStreamPlayFilter implements WebFilter {
         ServerHttpRequest request = exchange.getRequest();
         URI uri = request.getURI();
         Boolean isInner = exchange.getAttribute(Constants.IS_INNER);
+        String ip = (String) exchange.getAttributes().get(Constants.IP);
 
         if (!pathMatcher.match(Constants.STREAM_PLAY_PATH_PATTERN, uri.getPath())) {
             // 不是指定url不处理
@@ -57,6 +58,7 @@ public class VideoStreamPlayFilter implements WebFilter {
         }
         if (isInner != null && isInner) {
             // 内网不做特殊处理
+            log.info("ip: {}, 内网地址不做重定向", ip);
             return chain.filter(exchange);
         }
 
@@ -91,7 +93,6 @@ public class VideoStreamPlayFilter implements WebFilter {
                 AlistFsResponseDTO resp = gson.fromJson(response.body(), AlistFsResponseDTO.class);
                 if (resp.getCode().equals("200")) {
                     String rawUrl = resp.getData().getRawUrl();
-                    String ip = (String) exchange.getAttributes().get(Constants.IP);
                     log.info("ip: {}, 获取重定向地址：{}", ip, rawUrl);
                     return redirectMono(exchange, rawUrl);
                 }
