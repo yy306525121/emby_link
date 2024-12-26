@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: emby_link
+yang:
+  emby:
+    base-url: http://127.0.0.1:8096
+    api-key: xxx
+  alist:
+    internal-base-url: xxx
+    external-base-url: xxx
+    api-key: xxx
+  lan-ip: '192.168,10.110,fe80:'
