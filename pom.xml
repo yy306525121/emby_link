@@ -32,6 +32,12 @@
         </dependency>
 
         <dependency>
+            <groupId>media.emby</groupId>
+            <artifactId>embyclient-rest-java</artifactId>
+            <version>4.8.10.0</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>

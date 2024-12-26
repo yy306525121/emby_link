@@ -8,6 +8,7 @@ public interface Constants {
      * 标记是否是内网的标识
      */
     String IS_INNER = "isInner";
+    String IP = "ip";
 
     String REDIRECT = "redirect";
 

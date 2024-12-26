@@ -3,15 +3,15 @@ package cn.codeyang.emby.filter;
 import cn.codeyang.emby.config.YangProperties;
 import cn.codeyang.emby.constant.Constants;
 import cn.codeyang.emby.dto.alist.AlistFsResponseDTO;
-import cn.codeyang.emby.dto.emby.BaseItemDto;
-import cn.codeyang.emby.dto.emby.MediaSourceInfo;
-import cn.codeyang.emby.dto.emby.QueryResultBaseItemDto;
 import cn.codeyang.emby.utils.AlistUtil;
 import cn.codeyang.emby.utils.URIUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
+import io.swagger.client.model.BaseItemDto;
+import io.swagger.client.model.MediaSourceInfo;
+import io.swagger.client.model.QueryResultBaseItemDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
@@ -80,7 +80,7 @@ public class VideoStreamPlayFilter implements WebFilter {
                 }
                 path = mediaSourceInfo.getPath();
                 String itemName = mediaSourceInfo.getName();
-                Boolean notLocal = mediaSourceInfo.getIsInfiniteStream() || mediaSourceInfo.getIsRemote();
+                Boolean notLocal = mediaSourceInfo.isIsInfiniteStream() || mediaSourceInfo.isIsRemote();
             } else {
                 path = item.getPath();
             }
@@ -90,7 +90,10 @@ public class VideoStreamPlayFilter implements WebFilter {
                 Gson gson = new Gson();
                 AlistFsResponseDTO resp = gson.fromJson(response.body(), AlistFsResponseDTO.class);
                 if (resp.getCode().equals("200")) {
-                    return redirectMono(exchange, resp.getData().getRawUrl());
+                    String rawUrl = resp.getData().getRawUrl();
+                    String ip = (String) exchange.getAttributes().get(Constants.IP);
+                    log.info("ip: {}, 获取重定向地址：{}", ip, rawUrl);
+                    return redirectMono(exchange, rawUrl);
                 }
             }
 

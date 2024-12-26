@@ -2,6 +2,7 @@ package cn.codeyang.emby.filter;
 
 import cn.codeyang.emby.config.YangProperties;
 import cn.codeyang.emby.constant.Constants;
+import cn.codeyang.emby.utils.IPUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
@@ -29,13 +30,13 @@ public class RemoteAddressFilter implements WebFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
-        InetSocketAddress remoteAddress = request.getRemoteAddress();
-        String clientIp = Objects.requireNonNull(remoteAddress).getAddress().getHostAddress();
+        String clientIp = IPUtil.getClientIp(request);
 
         for (String lanIp : yangProperties.getLanIp()) {
             if (clientIp.startsWith(lanIp)) {
                 exchange.getAttributes().put(Constants.IS_INNER, true);
-                log.info("当前请求地址:{}, 属于内网", clientIp);
+                exchange.getAttributes().put(Constants.IP, clientIp);
+                break;
             }
         }
 

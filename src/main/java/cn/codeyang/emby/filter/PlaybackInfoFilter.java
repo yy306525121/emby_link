@@ -2,14 +2,14 @@ package cn.codeyang.emby.filter;
 
 import cn.codeyang.emby.config.YangProperties;
 import cn.codeyang.emby.constant.Constants;
-import cn.codeyang.emby.dto.emby.MediaSourceInfo;
-import cn.codeyang.emby.dto.emby.PlaybackInfoResponse;
 import cn.codeyang.emby.utils.URIUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.text.StrPool;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.util.URLUtil;
 import com.google.gson.Gson;
+import io.swagger.client.model.MediaSourceInfo;
+import io.swagger.client.model.PlaybackInfoResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
@@ -138,7 +138,7 @@ public class PlaybackInfoFilter implements WebFilter {
         if (CollUtil.isNotEmpty(mediaSources)) {
             mediaSources.forEach(mediaSource -> {
                 String id = mediaSource.getId();
-                Boolean isInfiniteStream = mediaSource.getIsInfiniteStream();
+                Boolean isInfiniteStream = mediaSource.isIsInfiniteStream();
                 // String originalStreamUrl = mediaSource.getDirectStreamUrl();
                 // String path = mediaSource.getPath();
                 String container = mediaSource.getContainer();
