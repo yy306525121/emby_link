@@ -35,13 +35,16 @@ public class RemoteAddressFilter implements WebFilter {
         String clientIp = IPUtil.getClientIp(request);
         exchange.getAttributes().put(Constants.IP, clientIp);
 
+        boolean isInner = false;
+
         for (String lanIp : yangProperties.getLanIp()) {
             if (clientIp.startsWith(lanIp)) {
-                exchange.getAttributes().put(Constants.IS_INNER, true);
+                isInner = true;
                 break;
             }
         }
 
+        exchange.getAttributes().put(Constants.IS_INNER, isInner);
         return chain.filter(exchange);
     }
 }

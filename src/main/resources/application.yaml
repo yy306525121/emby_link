@@ -3,7 +3,7 @@ spring:
     name: emby_link
 yang:
   emby:
-    base-url: http://127.0.0.1:8096
+    base-url: https://yy.codeyang.cn:82
     api-key: xxx
   alist:
     internal-base-url: xxx
