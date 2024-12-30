@@ -49,7 +49,7 @@ public class VideoStreamPlayFilter implements WebFilter {
     private final YangProperties yangProperties;
     private final AntPathMatcher pathMatcher;
     private final AlistClient alistClient;
-    public static final String REDIRECT_URL_TEMPLATE = "{host}/d/{path}?sign={sign}";
+    public static final String REDIRECT_URL_TEMPLATE = "{}/d/{}?sign={}";
 
 
     @Override

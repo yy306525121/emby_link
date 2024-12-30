@@ -113,8 +113,10 @@ public class PlaybackInfoFilter implements WebFilter {
                             DataBufferUtils.release(join);
                             String responseData = new String(content, StandardCharsets.UTF_8);
 
+                            log.info("playBackInfo 修改前内容: {}", responseData);
                             // 修改返回内容
                             responseData = modifyResponseData(request.getURI(), responseData);
+                            log.info("playBackInfo 修改后内容: {}", responseData);
 
                             //重新计算内容长度
                             int newContentLength = responseData.getBytes(StandardCharsets.UTF_8).length;
