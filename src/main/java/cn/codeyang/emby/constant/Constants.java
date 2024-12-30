@@ -17,10 +17,10 @@ public interface Constants {
     String MEDIA_SOURCE_ID = "MediaSourceId";
 
     // playbackInfo地址的正则
-    String PLAY_BACK_INFO_PATH_PATTERN = "/emby/Items/*/PlaybackInfo";
+    String PLAY_BACK_INFO_PATH_PATTERN = "/**/Items/*/PlaybackInfo";
 
     // emby真实播放地址的正则匹配
-    public static final String STREAM_PLAY_PATH_PATTERN = "/emby/videos/*/{stream,original}";
+    public static final String STREAM_PLAY_PATH_PATTERN = "/**/videos/*/{stream,original}";
 
     String API_KEY_NAME = "api_key";
 

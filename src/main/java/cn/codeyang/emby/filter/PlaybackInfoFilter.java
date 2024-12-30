@@ -48,8 +48,7 @@ import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.O
 @RequiredArgsConstructor
 public class PlaybackInfoFilter implements WebFilter {
     private final YangProperties yangProperties;
-
-    AntPathMatcher pathMatcher = new AntPathMatcher();
+    private final AntPathMatcher pathMatcher;
 
     private String generateDirectStreamUrl(URI uri, String sourceId, String resourceKey) {
         if (StrUtil.isEmpty(resourceKey)) {
@@ -121,6 +120,8 @@ public class PlaybackInfoFilter implements WebFilter {
                             int newContentLength = responseData.getBytes(StandardCharsets.UTF_8).length;
                             getDelegate().getHeaders().setContentLength(newContentLength);
 
+                            log.info("PlaybackInfo resp: {}", responseData);
+
                             return bufferFactory.wrap(responseData.getBytes());
                         }));
                     }
@@ -153,6 +154,8 @@ public class PlaybackInfoFilter implements WebFilter {
 
                 String directStreamUrl = generateDirectStreamUrl(uri, id, resourceKey);
                 mediaSource.setDirectStreamUrl(directStreamUrl);
+                mediaSource.setxRouteMode(Constants.REDIRECT);
+                mediaSource.setxModifyDirectStreamUrlSuccess(true);
             });
         }
 

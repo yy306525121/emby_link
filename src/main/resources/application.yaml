@@ -8,5 +8,7 @@ yang:
   alist:
     internal-base-url: xxx
     external-base-url: xxx
+    # 签名过期时间，单位小时
+    sign-expire-time: 24
     api-key: xxx
   lan-ip: '192.168,10.110,fe80:'

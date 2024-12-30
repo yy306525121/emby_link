@@ -26,8 +26,18 @@ public class YangProperties {
 
     @Data
     public static class Alist {
+        /**
+         * 内网地址
+         */
         private String internalBaseUrl;
+        /**
+         * 外网地址
+         */
         private String externalBaseUrl;
+        /**
+         * 签名过期时间(单位：小时）
+         */
+        private Integer signExpireTime;
         private String apiKey;
     }
 }

@@ -1,14 +1,19 @@
 package cn.codeyang.emby.filter;
 
+import cn.codeyang.emby.client.alist.AlistClient;
+import cn.codeyang.emby.client.alist.dto.AlistFileInfoResponse;
 import cn.codeyang.emby.config.YangProperties;
 import cn.codeyang.emby.constant.Constants;
 import cn.codeyang.emby.dto.alist.AlistFsResponseDTO;
 import cn.codeyang.emby.utils.AlistUtil;
 import cn.codeyang.emby.utils.URIUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.util.URLUtil;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
+import com.squareup.okhttp.CacheControl;
 import io.swagger.client.model.BaseItemDto;
 import io.swagger.client.model.MediaSourceInfo;
 import io.swagger.client.model.QueryResultBaseItemDto;
@@ -31,6 +36,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author yangzy
@@ -41,9 +47,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class VideoStreamPlayFilter implements WebFilter {
     private final YangProperties yangProperties;
+    private final AntPathMatcher pathMatcher;
+    private final AlistClient alistClient;
+    public static final String REDIRECT_URL_TEMPLATE = "{host}/d/{path}?sign={sign}";
 
-
-    AntPathMatcher pathMatcher = new AntPathMatcher();
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
@@ -81,24 +88,17 @@ public class VideoStreamPlayFilter implements WebFilter {
                     mediaSourceInfo = filterMediaSource != null ? filterMediaSource : mediaSourceInfo;
                 }
                 path = mediaSourceInfo.getPath();
-                String itemName = mediaSourceInfo.getName();
-                Boolean notLocal = mediaSourceInfo.isIsInfiniteStream() || mediaSourceInfo.isIsRemote();
             } else {
                 path = item.getPath();
             }
 
-            HttpResponse response = AlistUtil.fetchAlistPath(yangProperties.getAlist().getInternalBaseUrl(), path, yangProperties.getAlist().getApiKey());
-            if (response.isOk()) {
-                Gson gson = new Gson();
-                AlistFsResponseDTO resp = gson.fromJson(response.body(), AlistFsResponseDTO.class);
-                if (resp.getCode().equals("200")) {
-                    String rawUrl = resp.getData().getRawUrl();
-                    log.info("ip: {}, 获取重定向地址：{}", ip, rawUrl);
-                    return redirectMono(exchange, rawUrl);
-                }
+            AlistFileInfoResponse fileInfo = alistClient.getFileInfo(path);
+            if (fileInfo.getCode().equals("200")) {
+                String redirectUrl = StrUtil.format(REDIRECT_URL_TEMPLATE, yangProperties.getAlist().getExternalBaseUrl(), path, fileInfo.getData().getSign());
+                redirectUrl = URLUtil.normalize(redirectUrl);
+                log.info("获取直连地址:{}", redirectUrl);
+                return redirectMono(exchange, redirectUrl);
             }
-
-            System.out.println("aaa");
         } catch (Exception e) {
             log.error(e.getMessage());
         }
