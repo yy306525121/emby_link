@@ -1,22 +1,21 @@
 package cn.codeyang.emby.filter;
 
+import EmbyClient.ApiException;
+import EmbyClient.Java.ItemsServiceApi;
 import cn.codeyang.emby.client.alist.AlistClient;
 import cn.codeyang.emby.client.alist.dto.AlistFileInfoResponse;
 import cn.codeyang.emby.config.YangProperties;
 import cn.codeyang.emby.constant.Constants;
-import cn.codeyang.emby.dto.alist.AlistFsResponseDTO;
-import cn.codeyang.emby.utils.AlistUtil;
 import cn.codeyang.emby.utils.URIUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.util.URLUtil;
-import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.google.gson.Gson;
-import com.squareup.okhttp.CacheControl;
 import io.swagger.client.model.BaseItemDto;
 import io.swagger.client.model.MediaSourceInfo;
-import io.swagger.client.model.QueryResultBaseItemDto;
+import io.swagger.client.model.QueryResultBaseItemReqDto;
+import io.swagger.client.model.QueryResultBaseItemRespDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
@@ -36,7 +35,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author yangzy
@@ -71,7 +69,7 @@ public class VideoStreamPlayFilter implements WebFilter {
 
         try {
             // 获取emby的视频item信息
-            QueryResultBaseItemDto itemInfo = getItemInfo(request.getURI());
+            QueryResultBaseItemRespDto itemInfo = getItemInfo(request.getURI());
             if (CollUtil.isEmpty(itemInfo.getItems())) {
                 throw new RuntimeException("获取item信息失败");
             }
@@ -107,29 +105,27 @@ public class VideoStreamPlayFilter implements WebFilter {
     }
 
 
-    private QueryResultBaseItemDto getItemInfo(URI uri) {
+    private QueryResultBaseItemRespDto getItemInfo(URI uri) throws ApiException {
         Map<String, String> uriParams = URIUtil.getParams(uri);
 
-        Map<String, Object> params = new HashMap<>();
-        params.put("Limit", "1");
-        params.put(Constants.API_KEY_NAME, yangProperties.getEmby().getApiKey());
+        QueryResultBaseItemReqDto reqDTO = new QueryResultBaseItemReqDto();
+        reqDTO.setLimit(1);
 
         List<String> queryFields = new ArrayList<>();
         queryFields.add("MediaSources");
         queryFields.add("Path");
         String fields = String.join(",", queryFields);
-        params.put("Fields",  fields);
 
         if (uriParams.containsKey("MediaSourceId")) {
-            params.put("Ids", uriParams.get("MediaSourceId"));
+            reqDTO.setIds(uriParams.get("MediaSourceId"));
         } else {
             String itemId = URIUtil.getItemIdByUri(uri);
-            params.put("Ids", itemId);
+            reqDTO.setIds(itemId);
         }
 
-        String resp = HttpUtil.get(yangProperties.getEmby().getBaseUrl() + "/Items", params);
-        Gson gson = new Gson();
-        return gson.fromJson(resp, QueryResultBaseItemDto.class);
+        ItemsServiceApi itemsServiceApi = new ItemsServiceApi();
+        reqDTO.setFields(fields);
+        return itemsServiceApi.getItems(reqDTO);
     }
 
     private Mono<Void> redirectMono(ServerWebExchange exchange, String responseUrl) throws URISyntaxException {
