@@ -7,8 +7,11 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.text.StrPool;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.util.URLUtil;
-import com.google.gson.Gson;
-import io.swagger.client.model.MediaSourceInfo;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.client.model.PlaybackInfoResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +36,6 @@ import reactor.core.publisher.Mono;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -49,6 +51,8 @@ import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.O
 public class PlaybackInfoFilter implements WebFilter {
     private final YangProperties yangProperties;
     private final AntPathMatcher pathMatcher;
+
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     private String generateDirectStreamUrl(URI uri, String sourceId, String resourceKey) {
         if (StrUtil.isEmpty(resourceKey)) {
@@ -115,7 +119,12 @@ public class PlaybackInfoFilter implements WebFilter {
 
                             log.info("playBackInfo 修改前内容: {}", responseData);
                             // 修改返回内容
-                            responseData = modifyResponseData(request.getURI(), responseData);
+                            try {
+                                responseData = modifyResponseData(request.getURI(), responseData);
+                            } catch (JsonProcessingException e) {
+                                log.info(e.getMessage());
+                                log.info("json解析异常");
+                            }
                             log.info("playBackInfo 修改后内容: {}", responseData);
 
                             //重新计算内容长度
@@ -136,31 +145,32 @@ public class PlaybackInfoFilter implements WebFilter {
         return chain.filter(exchange.mutate().response(responseDecorator).build());
     }
 
-    private String modifyResponseData(URI uri, String jsonData) {
-        Gson gson = new Gson();
-        PlaybackInfoResponse playBackInfo = gson.fromJson(jsonData, PlaybackInfoResponse.class);
-        List<MediaSourceInfo> mediaSources = playBackInfo.getMediaSources();
+    private String modifyResponseData(URI uri, String jsonData) throws JsonProcessingException {
+        log.info("111");
+        JsonNode rootNode = objectMapper.readTree(jsonData);
+        ArrayNode mediaSources = (ArrayNode) rootNode.path("MediaSources");
+        log.info("222");
+        log.info("length:{}", mediaSources.size());
         if (CollUtil.isNotEmpty(mediaSources)) {
             mediaSources.forEach(mediaSource -> {
-                String id = mediaSource.getId();
-                Boolean isInfiniteStream = mediaSource.isIsInfiniteStream();
-                // String originalStreamUrl = mediaSource.getDirectStreamUrl();
-                // String path = mediaSource.getPath();
-                String container = mediaSource.getContainer();
+                ObjectNode mediaSourceObject = (ObjectNode) mediaSource;
+                String id = mediaSourceObject.get("Id").asText();
+                boolean isInfiniteStream = mediaSourceObject.get("IsInfiniteStream").asBoolean();
+                String container = mediaSourceObject.get("Container").asText();
 
                 // 设置不支持转码
-                mediaSource.setSupportsTranscoding(false);
+                mediaSourceObject.put("SupportsTranscoding", false);
 
                 String locationPath = isInfiniteStream ? "master" : "stream";
                 String resourceKey = locationPath + StrPool.DOT + container;
-
                 String directStreamUrl = generateDirectStreamUrl(uri, id, resourceKey);
-                mediaSource.setDirectStreamUrl(directStreamUrl);
-                mediaSource.setxRouteMode(Constants.REDIRECT);
-                mediaSource.setxModifyDirectStreamUrlSuccess(true);
+                mediaSourceObject.put("DirectStreamUrl", directStreamUrl);
+                mediaSourceObject.put("XRouteMode", Constants.REDIRECT);
+                mediaSourceObject.put("XModifyDirectStreamUrlSuccess", true);
+
             });
         }
 
-        return gson.toJson(playBackInfo);
+        return objectMapper.writeValueAsString(rootNode);
     }
 }
