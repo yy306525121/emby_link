@@ -69,6 +69,7 @@ public class PlaybackInfoFilter implements WebFilter {
         String path = uri.getPath();
         path = path.replace("Items", "videos");
         path = path.replace("PlaybackInfo", resourceKey);
+        path = path.replace("/emby", "");
 
         return path + "?" + queryStr;
     }

@@ -10,7 +10,4 @@ public class EmbyLinkApplication {
         SpringApplication.run(EmbyLinkApplication.class, args);
     }
 
-
-
-
 }

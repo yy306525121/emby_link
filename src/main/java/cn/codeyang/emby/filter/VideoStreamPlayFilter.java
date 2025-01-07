@@ -1,21 +1,17 @@
 package cn.codeyang.emby.filter;
 
-import EmbyClient.ApiException;
-import EmbyClient.Java.ItemsServiceApi;
 import cn.codeyang.emby.client.alist.AlistClient;
 import cn.codeyang.emby.client.alist.dto.AlistFileInfoResponse;
 import cn.codeyang.emby.config.YangProperties;
 import cn.codeyang.emby.constant.Constants;
+import cn.codeyang.emby.dto.emby.BaseItemQueryResultRespDTO;
 import cn.codeyang.emby.utils.URIUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.util.URLUtil;
 import cn.hutool.http.HttpUtil;
-import com.google.gson.Gson;
-import io.swagger.client.model.BaseItemDto;
-import io.swagger.client.model.MediaSourceInfo;
-import io.swagger.client.model.QueryResultBaseItemReqDto;
-import io.swagger.client.model.QueryResultBaseItemRespDto;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
@@ -29,8 +25,11 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,6 +47,7 @@ public class VideoStreamPlayFilter implements WebFilter {
     private final AntPathMatcher pathMatcher;
     private final AlistClient alistClient;
     public static final String REDIRECT_URL_TEMPLATE = "{}/d/{}?sign={}";
+    private ObjectMapper objectMapper = new ObjectMapper();
 
 
     @Override
@@ -69,25 +69,25 @@ public class VideoStreamPlayFilter implements WebFilter {
 
         try {
             // 获取emby的视频item信息
-            QueryResultBaseItemRespDto itemInfo = getItemInfo(request.getURI());
+            BaseItemQueryResultRespDTO itemInfo = getItemInfo(request.getURI());
             if (CollUtil.isEmpty(itemInfo.getItems())) {
                 throw new RuntimeException("获取item信息失败");
             }
 
-            BaseItemDto item = itemInfo.getItems().getFirst();
+            BaseItemQueryResultRespDTO.Item firstItem = itemInfo.getItems().getFirst();
 
             String path;
-            if (CollUtil.isNotEmpty(item.getMediaSources())) {
-                MediaSourceInfo mediaSourceInfo = item.getMediaSources().getFirst();
+            if (CollUtil.isNotEmpty(firstItem.getMediaSources())) {
+                BaseItemQueryResultRespDTO.MediaSourceInfo mediaSourceInfo = firstItem.getMediaSources().getFirst();
                 Map<String, String> params = URIUtil.getParams(uri);
                 if (params.containsKey("MediaSourceId")) {
                     String mediaSourceId = params.get("MediaSourceId");
-                    MediaSourceInfo filterMediaSource = item.getMediaSources().stream().filter(mediaSource -> mediaSource.getId().equals(mediaSourceId)).findFirst().orElse(null);
+                    BaseItemQueryResultRespDTO.MediaSourceInfo filterMediaSource = firstItem.getMediaSources().stream().filter(mediaSource -> mediaSource.getId().equals(mediaSourceId)).findFirst().orElse(null);
                     mediaSourceInfo = filterMediaSource != null ? filterMediaSource : mediaSourceInfo;
                 }
                 path = mediaSourceInfo.getPath();
             } else {
-                path = item.getPath();
+                path = firstItem.getPath();
             }
 
             AlistFileInfoResponse fileInfo = alistClient.getFileInfo(path);
@@ -98,6 +98,7 @@ public class VideoStreamPlayFilter implements WebFilter {
                 return redirectMono(exchange, redirectUrl);
             }
         } catch (Exception e) {
+            log.info("获取直连地址失败");
             log.error(e.getMessage());
         }
 
@@ -105,33 +106,35 @@ public class VideoStreamPlayFilter implements WebFilter {
     }
 
 
-    private QueryResultBaseItemRespDto getItemInfo(URI uri) throws ApiException {
+    private BaseItemQueryResultRespDTO getItemInfo(URI uri) throws JsonProcessingException {
         Map<String, String> uriParams = URIUtil.getParams(uri);
 
-        QueryResultBaseItemReqDto reqDTO = new QueryResultBaseItemReqDto();
-        reqDTO.setLimit(1);
+        Map<String, Object> params = new HashMap<>();
+        params.put("Limit", "1");
+        params.put(Constants.API_KEY_NAME, yangProperties.getEmby().getApiKey());
 
         List<String> queryFields = new ArrayList<>();
         queryFields.add("MediaSources");
         queryFields.add("Path");
         String fields = String.join(",", queryFields);
+        params.put("Fields",  fields);
 
         if (uriParams.containsKey("MediaSourceId")) {
-            reqDTO.setIds(uriParams.get("MediaSourceId"));
+            params.put("Ids", uriParams.get("MediaSourceId"));
         } else {
             String itemId = URIUtil.getItemIdByUri(uri);
-            reqDTO.setIds(itemId);
+            params.put("Ids", itemId);
         }
 
-        ItemsServiceApi itemsServiceApi = new ItemsServiceApi();
-        reqDTO.setFields(fields);
-        return itemsServiceApi.getItems(reqDTO);
+        String jsonResp = HttpUtil.get(yangProperties.getEmby().getBaseUrl() + "/Items", params);
+        log.info("获取item信息:{}", jsonResp);
+        return objectMapper.readValue(jsonResp, BaseItemQueryResultRespDTO.class);
     }
 
-    private Mono<Void> redirectMono(ServerWebExchange exchange, String responseUrl) throws URISyntaxException {
-        URI uri = new URI(responseUrl);
+    private Mono<Void> redirectMono(ServerWebExchange exchange, String responseUrl) throws URISyntaxException, UnsupportedEncodingException {
+        URI uri = new URI(URLUtil.normalize(responseUrl, true));
         ServerHttpResponse response = exchange.getResponse();
-        response.setStatusCode(HttpStatus.MOVED_PERMANENTLY);
+        response.setStatusCode(HttpStatus.FOUND);
         response.getHeaders().setLocation(uri);
         return Mono.empty();
     }

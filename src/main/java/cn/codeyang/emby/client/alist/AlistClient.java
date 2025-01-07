@@ -4,8 +4,8 @@ import cn.codeyang.emby.client.alist.dto.AlistFileInfoResponse;
 import cn.codeyang.emby.client.alist.dto.FileInfoRequest;
 import cn.codeyang.emby.config.YangProperties;
 import cn.hutool.core.util.URLUtil;
-import com.google.gson.Gson;
-import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
@@ -23,8 +23,9 @@ import org.springframework.web.client.RestTemplate;
 public class AlistClient {
     private final RestTemplate restTemplate;
     private final YangProperties yangProperties;
+    private ObjectMapper objectMapper = new ObjectMapper();
 
-    public AlistFileInfoResponse getFileInfo(String path) {
+    public AlistFileInfoResponse getFileInfo(String path) throws JsonProcessingException {
         String url = URLUtil.completeUrl(yangProperties.getAlist().getInternalBaseUrl(), "/api/fs/get");
 
         HttpHeaders headers = new HttpHeaders();
@@ -32,12 +33,10 @@ public class AlistClient {
         headers.add("Authorization", yangProperties.getAlist().getApiKey());
 
 
-        Gson gson = new Gson();
-
         FileInfoRequest request = new FileInfoRequest();
         request.setPath(path);
         HttpEntity<String> requestEntity =
-                new HttpEntity<>(gson.toJson(request), headers);
+                new HttpEntity<>(objectMapper.writeValueAsString(request), headers);
         return restTemplate.postForObject(url, requestEntity, AlistFileInfoResponse.class);
 
     }
